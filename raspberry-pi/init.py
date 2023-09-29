@@ -1,0 +1,3 @@
+from ingress_udp_server import start_ingress_udp_server
+
+start_ingress_udp_server()
