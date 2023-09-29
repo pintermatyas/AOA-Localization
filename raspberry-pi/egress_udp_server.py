@@ -11,6 +11,7 @@ def send_udp_message(message, EGRESS_SERVER_IP = '10.42.0.1', EGRESS_SERVER_PORT
        
        # Send the message to the server
        udp_socket.sendto(message.encode('utf-8'), server_address)
+       print("sent UDP message %s to %s", message, server_address)
 
     except KeyboardInterrupt:
         pass
