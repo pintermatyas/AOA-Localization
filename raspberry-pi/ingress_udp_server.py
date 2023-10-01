@@ -40,7 +40,6 @@ def decode_buffer(buffer):
             'channel': int(datas[5]),
             # 'user_defined_str': datas[7].strip('"'),
         }
-    print(data_dict)
     return data_dict
 
 

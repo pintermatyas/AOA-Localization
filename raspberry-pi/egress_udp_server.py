@@ -1,12 +1,11 @@
 import socket
 
-def send_udp_message(message, EGRESS_SERVER_IP = '10.42.0.1', EGRESS_SERVER_PORT = 9902):
+def send_udp_message(message, EGRESS_SERVER_IP = '10.42.0.99', EGRESS_SERVER_PORT = 9902):
     
     server_address = (EGRESS_SERVER_IP, EGRESS_SERVER_PORT)
 
     # Create a UDP socket
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_socket.bind(server_address)
     
     try:
        
