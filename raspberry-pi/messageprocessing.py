@@ -1,8 +1,7 @@
-from egress_udp_server import send_udp_message
+from egress_udp_server import multicast_udp_message
 
-EGRESS_SERVER_IP = '10.42.0.99' # Static IP of my connected phone
-EGRESS_SERVER_PORT = 9902
+egress_server_port = 9902
 
-def process_message(message):
-    #print("processing message %s", str(message))
-    send_udp_message(message, EGRESS_SERVER_IP, EGRESS_SERVER_PORT)
+def process_message(message, ingress_addresses):
+    # Here comes the positioning logic
+    multicast_udp_message(message, ingress_addresses, egress_server_port)

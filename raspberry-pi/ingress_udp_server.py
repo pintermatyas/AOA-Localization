@@ -4,10 +4,11 @@ import pandas as pd
 import numpy as np
 from messageprocessing import process_message
 
-COLLECT_MEASUREMENTS = True
+COLLECT_MEASUREMENTS = False
 BUFFER_SIZE=8192
 MEASUREMENT_FOLDER = '~/measurements'
 buffers = dict()
+ingress_addresses = list()
 measurements = list()
 
 def decode_buffer(buffer):
@@ -51,10 +52,8 @@ def start_ingress_udp_server(INGRESS_SERVER_IP = '10.42.0.1', INGRESS_SERVER_POR
     
     server_address = (INGRESS_SERVER_IP, INGRESS_SERVER_PORT)
 
-    # Create a UDP socket
+    # Create a UDP socket and bind the socket to the server address
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
-    # Bind the socket to the server address
     udp_socket.bind(server_address)
     
     print(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
@@ -63,6 +62,8 @@ def start_ingress_udp_server(INGRESS_SERVER_IP = '10.42.0.1', INGRESS_SERVER_POR
         while True:
             new_buffer, addr = udp_socket.recvfrom(BUFFER_SIZE)
 
+            if addr[0] not in ingress_addresses:
+                ingress_addresses.append(addr[0])
             if addr not in buffers:
                 buffers[addr] = new_buffer
             else:
@@ -71,10 +72,12 @@ def start_ingress_udp_server(INGRESS_SERVER_IP = '10.42.0.1', INGRESS_SERVER_POR
             if buffers[addr].startswith(b'\r\n+UUDF:') and buffers[addr].endswith(
                     b'\r\n'):
                 datas = decode_buffer(buffers.pop(addr, None))
-            if COLLECT_MEASUREMENTS and datas:
-                measurements.append(datas)
-            else:
-                process_message(datas)
+                # If we collect the measurements, it's appended to a list
+                if COLLECT_MEASUREMENTS:
+                    measurements.append(str(datas))
+                # Else we send it out to the connected hosts
+                else:
+                    process_message(str(datas), ingress_addresses)
 
     except KeyboardInterrupt:
         print("Ingress UDP server stopped.")

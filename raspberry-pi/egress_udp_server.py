@@ -1,19 +1,19 @@
 import socket
+import hosts
 
-def send_udp_message(message, EGRESS_SERVER_IP = '10.42.0.99', EGRESS_SERVER_PORT = 9902):
-    
-    server_address = (EGRESS_SERVER_IP, EGRESS_SERVER_PORT)
+def multicast_udp_message(message, ingress_addresses, egress_server_port):
 
-    # Create a UDP socket
+    ip_addresses = hosts.get_connected_hosts()
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
-    try:
-       
-       # Send the message to the server
-       udp_socket.sendto(message.encode('utf-8'), server_address)
-       print("sent UDP message %s to %s", message, server_address)
 
-    except KeyboardInterrupt:
-        pass
-    finally:
-        udp_socket.close()
+    for ipaddr in ip_addresses:
+        if str(ipaddr) not in ingress_addresses:
+            try:
+                server_address = (str(ipaddr), egress_server_port)
+                # Send the message to the server
+                udp_socket.sendto(message.encode('utf-8'), server_address)
+                print("sent UDP message " + message + " to " + str(ipaddr))
+            except KeyboardInterrupt:
+                pass
+
+    udp_socket.close()
