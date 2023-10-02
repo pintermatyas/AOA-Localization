@@ -1,1 +1,5 @@
 *.pyc
+
+# Logs
+raspberry-pi/logs
+*.log

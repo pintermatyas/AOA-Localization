@@ -1,7 +1,9 @@
 import socket
 import datetime
+import logger
 import pandas as pd
 import numpy as np
+from threading import Thread, get_ident
 from messageprocessing import process_message
 
 COLLECT_MEASUREMENTS = False
@@ -10,6 +12,7 @@ MEASUREMENT_FOLDER = '~/measurements'
 buffers = dict()
 ingress_addresses = list()
 measurements = list()
+logger = logger.get_logger()
 
 def decode_buffer(buffer):
     datas = buffer.decode('utf-8').strip().split(',')
@@ -56,7 +59,7 @@ def start_ingress_udp_server(INGRESS_SERVER_IP = '10.42.0.1', INGRESS_SERVER_POR
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(server_address)
     
-    print(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
+    logger.debug(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
 
     try:
         while True:
@@ -77,7 +80,9 @@ def start_ingress_udp_server(INGRESS_SERVER_IP = '10.42.0.1', INGRESS_SERVER_POR
                     measurements.append(str(datas))
                 # Else we send it out to the connected hosts
                 else:
-                    process_message(str(datas), ingress_addresses)
+                    # Use threading so sending out UDP messages doesn't hold up the main thread
+                    processing_thread = Thread(target=process_message, args=(str(datas), ingress_addresses), daemon=True)
+                    processing_thread.start()
 
     except KeyboardInterrupt:
         print("Ingress UDP server stopped.")
