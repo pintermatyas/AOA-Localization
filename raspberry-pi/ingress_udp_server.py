@@ -1,6 +1,9 @@
 import socket
 import datetime
 import logger
+import time
+import signal
+import subprocess
 import pandas as pd
 import numpy as np
 from threading import Thread, get_ident
@@ -14,7 +17,9 @@ ingress_addresses = list()
 measurements = list()
 logger = logger.get_logger()
 
-def decode_buffer(buffer):
+def decode_buffer(buffer, collected):
+    if not collected:
+        return buffer.decode('utf-8')
     datas = buffer.decode('utf-8').strip().split(',')
     if len(datas) != 9:
         return {}
@@ -52,41 +57,58 @@ def save_measurments(measurements):
     pd.DataFrame(measurements).to_csv(filename, index=False)
 
 def start_ingress_udp_server(INGRESS_SERVER_IP = '10.42.0.1', INGRESS_SERVER_PORT = 9901):
-    
+
     server_address = (INGRESS_SERVER_IP, INGRESS_SERVER_PORT)
 
     # Create a UDP socket and bind the socket to the server address
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(server_address)
-    
-    logger.debug(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
+    logger.info(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
 
-    try:
+    last_message_timestamp = datetime.datetime.now().timestamp()
+    def start_fallback_timer():
+        global last_message_timestamp
         while True:
-            new_buffer, addr = udp_socket.recvfrom(BUFFER_SIZE)
+            logger.info("Checking fallback timer")
+            current_time = datetime.datetime.now().timestamp()
+            if current_time - last_message_timestamp > 2:
+                logger.warning("Last message was over two seconds ago. Quitting.")
+                subprocess.run(["pkill", "-f", "init.py"])
+            buffers = dict()
+            time.sleep(3)
+    
+    def recieveve_udp_messages():
+        Thread(target=start_fallback_timer).start()
+        try:
+            while True:
+                new_buffer, addr = udp_socket.recvfrom(BUFFER_SIZE)
 
-            if addr[0] not in ingress_addresses:
-                ingress_addresses.append(addr[0])
-            if addr not in buffers:
-                buffers[addr] = new_buffer
-            else:
-                buffers[addr] += new_buffer
-
-            if buffers[addr].startswith(b'\r\n+UUDF:') and buffers[addr].endswith(
-                    b'\r\n'):
-                datas = decode_buffer(buffers.pop(addr, None))
-                # If we collect the measurements, it's appended to a list
-                if COLLECT_MEASUREMENTS:
-                    measurements.append(str(datas))
-                # Else we send it out to the connected hosts
+                if addr[0] not in ingress_addresses:
+                    ingress_addresses.append(addr[0])
+                if addr not in buffers:
+                    buffers[addr] = new_buffer
                 else:
-                    # Use threading so sending out UDP messages doesn't hold up the main thread
-                    processing_thread = Thread(target=process_message, args=(str(datas), ingress_addresses), daemon=True)
-                    processing_thread.start()
+                    buffers[addr] += new_buffer
 
-    except KeyboardInterrupt:
-        print("Ingress UDP server stopped.")
-    finally:
-        if COLLECT_MEASUREMENTS:
-            save_measurments(measurements)
-        udp_socket.close()
+                if buffers[addr].startswith(b'\r\n+UUDF:') and buffers[addr].endswith(
+                        b'\r\n'):
+                    datas = decode_buffer(buffers.pop(addr, None), False)
+                    last_message_timestamp = datetime.datetime.now().timestamp()
+                    # If we collect the measurements, it's appended to a list
+                    if COLLECT_MEASUREMENTS:
+                        measurements.append(str(datas))
+                    # Else we send it out to the connected hosts
+                    else:
+                        # Use threading so sending out UDP messages doesn't hold up the main thread
+                        processing_thread = Thread(target=process_message, args=(str(datas), ingress_addresses), daemon=True)
+                        processing_thread.start()
+
+        except KeyboardInterrupt:
+            logger.info("Ingress UDP server stopped.")
+            udp_socket.close()
+        finally:
+            if COLLECT_MEASUREMENTS:
+                save_measurments(measurements)
+            udp_socket.close()
+
+    Thread(target=recieveve_udp_messages).start()
