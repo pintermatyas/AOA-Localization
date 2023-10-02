@@ -1,0 +1,1 @@
+# Bluetooth positioning framework designed to work with u-blox EVK-ODIN-W2 and XPLR-AOA-2 modules
