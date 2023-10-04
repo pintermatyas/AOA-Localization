@@ -1,25 +1,26 @@
 import socket
-import hosts
+import subscription_handler
 import logger
+import constants
 
 logger = logger.get_logger()
 
-def multicast_udp_message(message, ingress_addresses, egress_server_port):
+def multicast_udp_message(message):
 
-    ip_addresses = hosts.get_connected_hosts()
+    ip_addresses = subscription_handler.subscribed_devices
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    egress_addresses = list()
 
     for ipaddr in ip_addresses:
-        if str(ipaddr) not in ingress_addresses:
-            try:
-                server_address = (str(ipaddr), egress_server_port)
-                # Send the message to the server
-                udp_socket.sendto(message.encode('utf-8'), server_address)
-                egress_addresses.append(str(ipaddr))
-            except KeyboardInterrupt:
-                logger.warning("Output UDP socket has been interrupted, quitting.")
-                pass
+        try:
+            server_address = (str(ipaddr), constants.EGRESS_PORT)
+            # Send the message to the server
+            udp_socket.sendto(message.encode('utf-8'), server_address)
+        except KeyboardInterrupt:
+            logger.warning("Output UDP socket has been interrupted, quitting.")
+            pass
 
-    logger.info("Multicasted UDP message " + message + " to " + str(egress_addresses))
+    if len(ip_addresses) == 0:
+        logger.info("No subscribed devices!")
+    else:
+        logger.info("Multicasted UDP message " + message + " to " + str(ip_addresses))
     udp_socket.close()

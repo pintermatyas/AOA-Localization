@@ -1,3 +1,6 @@
-from ingress_udp_server import start_ingress_udp_server
+import ingress_udp_server
+import subscription_handler
+from threading import Thread
 
-start_ingress_udp_server()
+Thread(target=subscription_handler.start_subscription_handler).start()
+Thread(target=ingress_udp_server.start_ingress_udp_server).start()
