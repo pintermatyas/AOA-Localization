@@ -14,7 +14,7 @@ def multicast_udp_message(message):
         try:
             server_address = (str(ipaddr), constants.EGRESS_PORT)
             # Send the message to the server
-            udp_socket.sendto(message.encode('utf-8'), server_address)
+            udp_socket.sendto(str(message).encode('utf-8'), server_address)
         except KeyboardInterrupt:
             logger.warning("Output UDP socket has been interrupted, quitting.")
             pass
@@ -22,5 +22,5 @@ def multicast_udp_message(message):
     if len(ip_addresses) == 0:
         logger.info("No subscribed devices!")
     else:
-        logger.info("Multicasted UDP message " + message + " to " + str(ip_addresses))
+        logger.info("Multicasted UDP message " + str(message) + " to " + str(ip_addresses))
     udp_socket.close()
