@@ -2,8 +2,11 @@ import socket
 import datetime
 import logger
 import constants
+import time
+import threading
 import pandas as pd
 import numpy as np
+import positioning
 from messageprocessing import process_message
 
 COLLECT_MEASUREMENTS = False
@@ -52,30 +55,51 @@ def save_measurments(measurements):
     pd.DataFrame(measurements).to_csv(filename, index=False)
 
 def start_ingress_udp_server():
-
+    global ingress_addresses, buffers, measurements
     server_address = (constants.GATEWAY_IP, constants.INGRESS_SERVER_PORT)
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(server_address)
     logger.info(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
+    current_buffer = 0
     
     try:
         while True:
-            new_buffer, addr = udp_socket.recvfrom(constants.BUFFER_SIZE)
+            max_buffer = 8
+            data, addr = get_current_udp_message(udp_socket, constants.BUFFER_SIZE)
+
             if addr[0] not in ingress_addresses:
                 ingress_addresses.append(addr[0])
-            if addr not in buffers:
-                buffers[addr] = new_buffer
-            else:
-                buffers[addr] += new_buffer
-            if buffers[addr].startswith(b'\r\n+UUDF:') and buffers[addr].endswith(
-                    b'\r\n'):
-                datas = decode_buffer(buffers.pop(addr, None), False)
-                # If we collect the measurements, it's appended to a list
-                if COLLECT_MEASUREMENTS:
-                    measurements.append(str(datas))
-                # Else we send it out to the connected hosts
+
+            if COLLECT_MEASUREMENTS:
+                if addr not in buffers:
+                    buffers[addr] = data
                 else:
-                    process_message(str(datas), ingress_addresses) # TODO instead of processing individual messages, we should collect all antenna's measurements and send them to processing altogether
+                    buffers[addr] += data
+                if buffers[addr].startswith(b'\r\n+UUDF:') and buffers[addr].endswith(
+                        b'\r\n'):
+                    datas = decode_buffer(buffers.pop(addr, None), False)
+                    # If we collect the measurements, it's appended to a list
+                    if COLLECT_MEASUREMENTS:
+                        measurements.append(str(datas))
+
+            else:
+                buffers[addr[0]] = data
+                current_buffer += 1
+
+                if current_buffer == max_buffer:
+                    datas = list()
+                    for addr, buffer_value in buffers.items():
+                        logger.info(str(buffer_value))
+                        if buffer_value.startswith(b'\r\n+UUDF:') and buffer_value.endswith(
+                                b'\r\n'):
+                            datas.append(decode_buffer(buffer_value, True))
+
+                    threading.Thread(target=process_message, args=[datas]).start()
+                    buffers = dict()
+                    current_buffer = 0
+                    udp_socket.setblocking(1)
+                    logger.info("sleeping")
+                    time.sleep(0.9)
     except KeyboardInterrupt:
         logger.info("Ingress UDP server stopped.")
         udp_socket.close()
@@ -83,3 +107,16 @@ def start_ingress_udp_server():
         if COLLECT_MEASUREMENTS:
             save_measurments(measurements)
         udp_socket.close()
+
+def get_current_udp_message(udp_socket, buffer_size):
+    udp_socket.setblocking(0)
+
+    while True:
+        try:
+            data, addr = udp_socket.recvfrom(buffer_size)
+        except socket.error:
+            break
+
+    udp_socket.setblocking(1)
+    data, addr = udp_socket.recvfrom(buffer_size)
+    return data, addr

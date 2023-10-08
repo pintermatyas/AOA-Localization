@@ -1,4 +1,5 @@
 MEASUREMENT_FOLDER = '~/measurements'
+CONFIG_FOLDER = '~/Downloads/AOA-Localization/raspberry-pi/config'
 GATEWAY_IP = '10.42.0.1'
 INGRESS_SERVER_PORT = 9901
 EGRESS_PORT = 9902
