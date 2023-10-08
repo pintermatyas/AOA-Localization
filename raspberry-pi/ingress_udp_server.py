@@ -6,12 +6,12 @@ import time
 import threading
 import pandas as pd
 import numpy as np
+import positioning
 from messageprocessing import process_message
 
 COLLECT_MEASUREMENTS = False
 buffers = dict()
 ingress_addresses = list()
-buffered_addresses = list()
 measurements = list()
 logger = logger.get_logger()
 
@@ -55,18 +55,22 @@ def save_measurments(measurements):
     pd.DataFrame(measurements).to_csv(filename, index=False)
 
 def start_ingress_udp_server():
-    global ingress_addresses, buffered_addresses, buffers, measurements
+    global ingress_addresses, buffers, measurements
     server_address = (constants.GATEWAY_IP, constants.INGRESS_SERVER_PORT)
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(server_address)
     logger.info(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
+    current_buffer = 0
     
     try:
         while True:
+            max_buffer = 8
             data, addr = get_current_udp_message(udp_socket, constants.BUFFER_SIZE)
+
+            if addr[0] not in ingress_addresses:
+                ingress_addresses.append(addr[0])
+
             if COLLECT_MEASUREMENTS:
-                if addr[0] not in ingress_addresses:
-                    ingress_addresses.append(addr[0])
                 if addr not in buffers:
                     buffers[addr] = data
                 else:
@@ -79,14 +83,10 @@ def start_ingress_udp_server():
                         measurements.append(str(datas))
 
             else:
-                if addr[0] not in ingress_addresses:
-                    ingress_addresses.append(addr[0])
-                if addr[0] not in buffered_addresses:
-                    buffered_addresses.append(addr[0])
-                if addr not in buffers:
-                    buffers[addr] = data
+                buffers[addr[0]] = data
+                current_buffer += 1
 
-                if len(buffers) == len(ingress_addresses):
+                if current_buffer == max_buffer:
                     datas = list()
                     for addr, buffer_value in buffers.items():
                         logger.info(str(buffer_value))
@@ -95,9 +95,9 @@ def start_ingress_udp_server():
                             datas.append(decode_buffer(buffer_value, True))
 
                     threading.Thread(target=process_message, args=[datas]).start()
-                    ingress_addresses = buffered_addresses
-                    buffered_addresses = list()
                     buffers = dict()
+                    current_buffer = 0
+                    udp_socket.setblocking(1)
                     logger.info("sleeping")
                     time.sleep(0.9)
     except KeyboardInterrupt:

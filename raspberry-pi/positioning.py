@@ -88,7 +88,7 @@ class BluetoothPositionSystem:
         return {
             'est_pos': np.array([X, Y]).T,
             'timestamps': np.array(timestamps),
-            'true_pos': df[['x', 'y']].to_numpy(),
+            #'true_pos': df[['x', 'y']].to_numpy(),
             'used_anchors': list(used_anchors)
         }
 
