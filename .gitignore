@@ -3,3 +3,6 @@
 # Logs
 raspberry-pi/logs
 *.log
+
+# Android studio files
+.idea/*
