@@ -15,12 +15,7 @@ def process_message(message):
     bps = positioning.BluetoothPositionSystem()
     est_pos = bps.aoa_2(df, anchors)
     avg_pos = np.nanmean(est_pos['est_pos'], axis=0)
-    lowest_x = anchors['x'].min()
-    highest_x = anchors['x'].max()
-    lowest_y = anchors['y'].min()
-    highest_y = anchors['y'].max()
 
-    lowest_coordinates = (lowest_x, lowest_y)
-    highest_coordinates = (highest_x, highest_y)
+    coordinate_string = ";".join(anchors.apply(lambda row: f"{row['x']},{row['y']}", axis=1))
 
-    multicast_udp_message(str(avg_pos) + ";" + str(lowest_coordinates) + "," + str(highest_coordinates))
+    multicast_udp_message(str(avg_pos[0]) + ","+ str(avg_pos[1]) + ";;" + coordinate_string)
