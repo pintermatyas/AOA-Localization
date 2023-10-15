@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.net.BindException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -82,21 +83,31 @@ fun ReceivedPacketView() {
     val context = LocalContext.current
     LaunchedEffect(key1 = context) {
         CoroutineScope(Dispatchers.IO).launch {
-            val socket = DatagramSocket(9902)
-            val buffer = ByteArray(1024)
-            val packet = DatagramPacket(buffer, buffer.size)
+            try{
+                val socket = DatagramSocket(9902)
+                val buffer = ByteArray(1024)
+                val packet = DatagramPacket(buffer, buffer.size)
 
-            while (true) {
-                socket.receive(packet)
-                val message = String(packet.data, 0, packet.length)
-                packetData = message
-                Log.d(TAG, packetData)
+                while (true) {
+                    socket.receive(packet)
+                    val message = String(packet.data, 0, packet.length)
+                    packetData = message
+                    Log.d(TAG, packetData)
+                }
+
+                socket.close()
             }
-
-            // Don't forget to close the socket
-            socket.close()
+            catch (e: BindException){
+                e.printStackTrace()
+            }
         }
     }
 
-    Text(text = packetData)
+
+    if (packetData.contains("Awaiting")){
+        Text(text=packetData)
+    }
+    else{
+        MapScreen(data = packetData)
+    }
 }
