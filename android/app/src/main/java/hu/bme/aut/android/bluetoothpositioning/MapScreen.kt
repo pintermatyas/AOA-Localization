@@ -95,6 +95,6 @@ fun MapScreenPreviewSingleEstimatedPos(){
 
 @Preview
 @Composable
-fun MapScreenPreviewSingleAnchor(){
-    MapScreen("4.1,5.1;5,6.5;5.9,6.4;;8,9")
+fun MapScreenPreviewNegativeNumbers(){
+    MapScreen("-4.1,5.1;;-8,9;1,5;6,3")
 }
