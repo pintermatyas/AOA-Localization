@@ -28,13 +28,15 @@ fun MapScreen(data: String) {
     val (estimated, anchors) = parseCoordinates(data)!!
 
 
-    if(anchors.isEmpty())
+    if(anchors.size <= 1){
+        Toast.makeText(LocalContext.current, "There are too few anchors!", Toast.LENGTH_LONG).show()
         return
+    }
 
-    val maxX = maxOf(estimated.x, anchors.maxOf { it.x })
-    val minX = minOf(estimated.x, anchors.minOf { it.x })
-    val maxY = maxOf(estimated.y, anchors.maxOf { it.y })
-    val minY = minOf(estimated.y, anchors.minOf { it.y })
+    val maxX = anchors.maxByOrNull { it.x }!!.x
+    val minX = anchors.minByOrNull { it.x }!!.x
+    val maxY = anchors.maxByOrNull { it.y }!!.y
+    val minY = anchors.minByOrNull { it.y }!!.y
 
     val widthRange = maxX - minX
     val heightRange = maxY - minY
@@ -42,8 +44,10 @@ fun MapScreen(data: String) {
     val screenWidthPx = LocalConfiguration.current.screenWidthDp
     val screenHeightPx = LocalConfiguration.current.screenHeightDp
 
-    val adjustedWidth = screenWidthPx - 10
-    val adjustedHeight = screenHeightPx - 10
+    val widthAdjustment = 30
+    val heightAdjustment = 30
+    val adjustedWidth = screenWidthPx - widthAdjustment
+    val adjustedHeight = screenHeightPx - heightAdjustment
 
     Box(
         modifier = Modifier
@@ -55,28 +59,42 @@ fun MapScreen(data: String) {
             Box(
                 modifier = Modifier
                     .offset(
-                        x = ((anchor.x - minX) / widthRange * adjustedWidth).dp,
-                        y = (-((anchor.y - minY) / heightRange * adjustedHeight)).dp
+                        x = (((anchor.x - minX) / widthRange * adjustedWidth) + widthAdjustment/2).dp,
+                        y = ((-((anchor.y - minY) / heightRange * adjustedHeight)) - heightAdjustment/2).dp
                     )
                     .size(10.dp)
                     .background(Color.Blue)
             )
         }
 
-        Box(
-            modifier = Modifier
-                .offset(
-                    x = ((estimated.x - minX) / widthRange * adjustedWidth).dp,
-                    y = (-((estimated.y - minY) / heightRange * adjustedHeight)).dp
-                )
-                .size(10.dp)
-                .background(Color.Red)
-        )
+        estimated.forEach { estimate ->
+            Box(
+                modifier = Modifier
+                    .offset(
+                        x = (((estimate.x - minX) / widthRange * adjustedWidth) + widthAdjustment/2).dp,
+                        y = ((-((estimate.y - minY) / heightRange * adjustedHeight)) - heightAdjustment/2).dp
+                    )
+                    .size(10.dp)
+                    .background(Color.Red)
+            )
+        }
     }
 }
 
 @Preview
 @Composable
-fun MapScreenPreview(){
-    MapScreen("4,5;;8,9;1,5;6,3")
+fun MapScreenPreviewMultipleEstimatedPos(){
+    MapScreen("4.1,5.1;5,6.5;5.9,6.4;;8,9;1,5;6,3")
+}
+
+@Preview
+@Composable
+fun MapScreenPreviewSingleEstimatedPos(){
+    MapScreen("4.1,5.1;;8,9;1,5;6,3")
+}
+
+@Preview
+@Composable
+fun MapScreenPreviewNegativeNumbers(){
+    MapScreen("-4.1,5.1;;-8,9;1,5;6,3")
 }

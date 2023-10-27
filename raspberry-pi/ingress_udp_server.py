@@ -49,6 +49,17 @@ def decode_buffer(buffer, collected):
         }
     return data_dict
 
+def get_tag_id_from_buffer(buffer):
+    datas = buffer.decode('utf-8').strip().split(',')
+    ret = ""
+    if len(datas) != 9:
+        ret = {}
+    elif ":" in datas[0]:
+        ret = datas[0].split(':')[1]
+    else:
+        ret = datas[0]
+
+    return str(ret)
 
 def save_measurments(measurements):
     filename = f'{constants.MEASUREMENT_FOLDER}/m_{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.csv'
@@ -60,11 +71,10 @@ def start_ingress_udp_server():
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(server_address)
     logger.info(f"Ingress UDP server listening on {server_address[0]}:{server_address[1]}")
-    current_buffer = 0
+    current_buffer = dict()
     
     try:
         while True:
-            max_buffer = 8
             data, addr = get_current_udp_message(udp_socket, constants.BUFFER_SIZE)
 
             if addr[0] not in ingress_addresses:
@@ -83,20 +93,32 @@ def start_ingress_udp_server():
                         measurements.append(str(datas))
 
             else:
-                buffers[addr[0]] = data
-                current_buffer += 1
+                tag_id = get_tag_id_from_buffer(data)
+                if tag_id not in buffers:
+                    buffers[tag_id] = dict()
+                buffers[tag_id][addr[0]] = data
+                if tag_id not in current_buffer:
+                    current_buffer[tag_id] = 1
+                else:
+                    current_buffer[tag_id] += 1
+                
+                reached_max_size = False
+                for tag_id, buffer_size_with_tag_id in current_buffer.items():
+                    if buffer_size_with_tag_id == constants.MAX_BUFFER_SIZE:
+                        reached_max_size = True
 
-                if current_buffer == max_buffer:
-                    datas = list()
-                    for addr, buffer_value in buffers.items():
-                        logger.info(str(buffer_value))
-                        if buffer_value.startswith(b'\r\n+UUDF:') and buffer_value.endswith(
-                                b'\r\n'):
-                            datas.append(decode_buffer(buffer_value, True))
-
+                if reached_max_size:
+                    datas = dict()
+                    for tag_id, buffer_with_addr in buffers.items():
+                        datas[tag_id] = list()
+                        for addr, buffer_value in buffer_with_addr.items():
+                            logger.info(str(buffer_value))
+                            if buffer_value.startswith(b'\r\n+UUDF:') and buffer_value.endswith(
+                                    b'\r\n'):
+                                datas[tag_id].append(decode_buffer(buffer_value, True))
                     threading.Thread(target=process_message, args=[datas]).start()
                     buffers = dict()
-                    current_buffer = 0
+                    current_buffer = dict()
                     udp_socket.setblocking(1)
                     logger.info("sleeping")
                     time.sleep(0.9)

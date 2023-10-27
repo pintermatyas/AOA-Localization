@@ -3,6 +3,7 @@ package hu.bme.aut.android.bluetoothpositioning
 import android.content.ContentValues.TAG
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
@@ -91,8 +92,12 @@ fun ReceivedPacketView() {
                 while (true) {
                     socket.receive(packet)
                     val message = String(packet.data, 0, packet.length)
-                    packetData = message
-                    Log.d(TAG, packetData)
+                    if(!message.contains("nan")){
+                        packetData = message
+                        Log.d(TAG, packetData)
+                    } else {
+                        Log.e(TAG, message)
+                    }
                 }
 
                 socket.close()

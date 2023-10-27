@@ -2,21 +2,24 @@ package hu.bme.aut.android.bluetoothpositioning
 
 data class Coordinate(val x: Float, val y: Float)
 
-fun parseCoordinates(data: String): Pair<Coordinate, List<Coordinate>>? {
+fun parseCoordinates(data: String): Pair<List<Coordinate>, List<Coordinate>>? {
     // Format is the following:
-    // estimated_coordinates;;anchor_1_coord;anchor_2_coord;anchor_3_coord etc.
+    // estimated_1_coordinates;estimated_2_coordinates;;anchor_1_coord;anchor_2_coord;anchor_3_coord etc.
     // Using a regex as validation:
-    val regexPattern = """\d+(?:\.\d+)?,\d+(?:\.\d+)?;(;\d+(?:\.\d+)?,\d+(?:\.\d+)?)*""".toRegex()
+    val regexPattern = """(-?\d+(\.\d+)?,-?\d+(\.\d+);)+(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)+""".toRegex()
+
 
     return if(regexPattern.matches(data)){
         val sections = data.split(";;")
-        val estimatedCoord = sections[0].split(",").let { Coordinate(it[0].toFloat(), it[1].toFloat()) }
-
-        val anchorCoords = sections[1].split(";").map {
-            it.split(",").let { coord -> Coordinate(coord[0].toFloat(), coord[1].toFloat()) }
+        val estimatedCoords = sections[0].split(";").map {
+            it.split(",").let { estimatedCoord -> Coordinate(estimatedCoord[0].toFloat(), estimatedCoord[1].toFloat())  }
         }
 
-        Pair(estimatedCoord, anchorCoords)
+        val anchorCoords = sections[1].split(";").map {
+            it.split(",").let { anchorCoord -> Coordinate(anchorCoord[0].toFloat(), anchorCoord[1].toFloat()) }
+        }
+
+        Pair(estimatedCoords, anchorCoords)
     }
     else {
         null
