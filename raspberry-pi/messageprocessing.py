@@ -18,10 +18,7 @@ def process_message(message):
         est_pos = bps.aoa_2(df, anchors)
         if est_pos['est_pos'].size !=  0:
             avg_pos = np.nanmean(est_pos['est_pos'], axis=0)
-            if avg_pos[0] == np.nan or avg_pos[1] == np.nan:
-                continue
-            else:
-                est_pos_list.append(avg_pos)
+            est_pos_list.append(avg_pos)
     
     est_pos_string = ""
     if len(est_pos_list) == 1:

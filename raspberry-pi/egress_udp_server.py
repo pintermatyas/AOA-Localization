@@ -2,6 +2,7 @@ import socket
 import subscription_handler
 import logger
 import constants
+import re
 
 logger = logger.get_logger()
 
@@ -9,6 +10,9 @@ def multicast_udp_message(message):
 
     ip_addresses = subscription_handler.subscribed_devices
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    message = re.sub(r'\bnan,nan;', '', message)
+    message = re.sub(r'\bnan,nan;;', ';', message)
 
     for ipaddr in ip_addresses:
         try:
