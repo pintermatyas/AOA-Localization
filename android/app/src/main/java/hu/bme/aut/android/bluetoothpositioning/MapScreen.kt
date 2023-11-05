@@ -15,7 +15,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.security.AccessController.getContext
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
