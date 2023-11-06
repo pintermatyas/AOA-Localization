@@ -84,13 +84,11 @@ class MainActivity : ComponentActivity() {
     }
 
     fun verifyStoragePermissions(activity: Activity?) {
-        // Check if we have write permission
         val permission = ActivityCompat.checkSelfPermission(
             activity!!,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
         if (permission != PackageManager.PERMISSION_GRANTED) {
-            // We don't have permission so prompt the user
             ActivityCompat.requestPermissions(
                 activity,
                 PERMISSIONS_STORAGE,
@@ -111,9 +109,9 @@ fun MyApp(content: @Composable () -> Unit) {
 
 @Composable
 fun ReceivedPacketView() {
+    val context = LocalContext.current
     var packetData by remember { mutableStateOf("Awaiting packet...") }
 
-    val context = LocalContext.current
     LaunchedEffect(key1 = context) {
         CoroutineScope(Dispatchers.IO).launch {
             try{
@@ -145,6 +143,36 @@ fun ReceivedPacketView() {
         Text(text=packetData)
     }
     else{
+        /*
+        Instead of MapScreen, use OverlayMapScreen to display the coordinates on the image
+        First parse coordinates, then pass them to the screen alongside the topRight and bottomLeft coordinates
+
+        Somehow like this:
+
+        if(parseCoordinates(packetData) == null){
+            Toast.makeText(LocalContext.current, "Valid data could not be fetched.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val (estimated, anchors) = parseCoordinates(packetData)!!
+        val bitmap = loadImageFromInternalStorage(context)!!
+        OverlayMapScreen(
+            image: Bitmap,
+            topRightCoordinate: Coordinate,
+            bottomLeftCoordinate: Coordinate,
+            anchors: List<Coordinate>,
+            estimated: List<Coordinate>
+        )
+        TODO: Add navigation to the application to be able to switch between screens
+              and recieve configuration coordinates from the ImageSelectionScreen
+
+        Afterwards, MapScreen can be removed
+
+        TODO: Test OverlayMapScreen with new data:
+                    - unparsable data should be handled
+                    - too few anchors should be handled
+                    - too few estimated position should be handled
+         */
+
         MapScreen(data = packetData)
     }
 }

@@ -3,9 +3,12 @@ package hu.bme.aut.android.bluetoothpositioning
 data class Coordinate(var x: Float, var y: Float)
 
 fun parseCoordinates(data: String): Pair<List<Coordinate>, List<Coordinate>>? {
-    // Format is the following:
-    // estimated_1_coordinates;estimated_2_coordinates;;anchor_1_coord;anchor_2_coord;anchor_3_coord etc.
-    // Using a regex as validation:
+    /*
+    Format is the following:
+    estimated_1_coordinates;estimated_2_coordinates;;anchor_1_coord;anchor_2_coord;anchor_3_coord etc.
+    Using a regex as validation:
+    TODO: Add anchor and tag IDs to the format
+    */
     val regexPattern = """(-?\d+(\.\d+)?,-?\d+(\.\d+);)+(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)+""".toRegex()
 
 

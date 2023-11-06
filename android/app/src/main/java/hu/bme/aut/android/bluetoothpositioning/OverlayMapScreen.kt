@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -24,14 +25,20 @@ fun MapWithOverlay(
     image: Bitmap,
     topRightCoordinate: Coordinate,
     bottomLeftCoordinate: Coordinate,
-    overlayCoordinates: List<Coordinate>
+    anchorOverlayCoordinates: List<Coordinate>,
+    estimatedOverlayCoordinates: List<Coordinate>
 ) {
+    val coordinateMarkerSize = 25f
 
     //Offset top right, bottom left and overlay coordinates to positive numbers,
     //so that the image with overlaid coordinates can be displayed properly
     var widthCoordinateOffset = 0f
     var heightCoordinateOffset = 0f
-    for(coordinate in overlayCoordinates){
+    for(coordinate in anchorOverlayCoordinates){
+        widthCoordinateOffset = min(widthCoordinateOffset, coordinate.x)
+        heightCoordinateOffset = min(heightCoordinateOffset, coordinate.y)
+    }
+    for(coordinate in estimatedOverlayCoordinates){
         widthCoordinateOffset = min(widthCoordinateOffset, coordinate.x)
         heightCoordinateOffset = min(heightCoordinateOffset, coordinate.y)
     }
@@ -40,15 +47,16 @@ fun MapWithOverlay(
     widthCoordinateOffset = min(widthCoordinateOffset, bottomLeftCoordinate.x)
     heightCoordinateOffset = min(heightCoordinateOffset, bottomLeftCoordinate.y)
 
-    val offsetCoordinates = overlayCoordinates.map { coordinate ->
+    val anchorOffsetCoordinates = anchorOverlayCoordinates.map { coordinate ->
+        Coordinate(coordinate.x - widthCoordinateOffset, coordinate.y - heightCoordinateOffset)
+    }
+    val estimatedOffsetCoordinates = estimatedOverlayCoordinates.map { coordinate ->
         Coordinate(coordinate.x - widthCoordinateOffset, coordinate.y - heightCoordinateOffset)
     }
     topRightCoordinate.x -= widthCoordinateOffset
     topRightCoordinate.y -= heightCoordinateOffset
     bottomLeftCoordinate.x -= widthCoordinateOffset
     bottomLeftCoordinate.y -= heightCoordinateOffset
-
-
 
 
     val screenWidthInPixels = LocalConfiguration.current.screenWidthDp * LocalConfiguration.current.densityDpi / 160f
@@ -84,14 +92,32 @@ fun MapWithOverlay(
             contentScale = ContentScale.Fit,
         )
         Canvas(modifier = Modifier.fillMaxSize()) {
-            for (coordinate in offsetCoordinates) {
+            for (coordinate in anchorOffsetCoordinates) {
                 val x = ((coordinate.x / imageWidthInCoordinate) * scaledImageWidth + widthOffset)
                 val y = ((coordinate.y / imageHeightInCoordinate) * scaledImageHeight + heightOffset)
                 Log.e(
                     ContentValues.TAG,
                     "Coordinate: ${coordinate.x}, ${coordinate.y}, " +
                             "x: $x, y: $y")
-                drawCircle(color = Color.Red, radius = 5f, center = Offset(x, y))
+                drawRect(
+                    color = Color.Blue,
+                    topLeft = Offset(x-coordinateMarkerSize/2, y-coordinateMarkerSize/2),
+                    size = Size(coordinateMarkerSize, coordinateMarkerSize)
+                )
+            }
+
+            for (coordinate in estimatedOffsetCoordinates) {
+                val x = ((coordinate.x / imageWidthInCoordinate) * scaledImageWidth + widthOffset)
+                val y = ((coordinate.y / imageHeightInCoordinate) * scaledImageHeight + heightOffset)
+                Log.e(
+                    ContentValues.TAG,
+                    "Coordinate: ${coordinate.x}, ${coordinate.y}, " +
+                            "x: $x, y: $y")
+                drawRect(
+                    color = Color.Red,
+                    topLeft = Offset(x-coordinateMarkerSize/2, y-coordinateMarkerSize/2),
+                    size = Size(coordinateMarkerSize, coordinateMarkerSize)
+                )
             }
         }
     }
@@ -104,11 +130,16 @@ fun MapOverlayPreview(){
     val image: Bitmap = loadImageFromInternalStorage(context)!!
     val topRightCoordinate = Coordinate(5.0f, 5.0f)
     val bottomLeftCoordinate = Coordinate(-5.0f, -5.0f)
-    val overlayCoordinates = listOf(
+    val anchorOverlayCoordinates = listOf(
         Coordinate(5.0f, 5.0f),
         Coordinate(-5.0f, -5.0f),
-        Coordinate(0.0f, 0.0f),
-        Coordinate(2.5f, 2.5f),
     )
-    MapWithOverlay(image, topRightCoordinate, bottomLeftCoordinate, overlayCoordinates)
+    val estimatedOverlayCoordinates = listOf(
+        Coordinate(5.0f, -5.0f),
+        Coordinate(-5.0f, 5.0f),
+        Coordinate(0.5f, 0.0f),
+        Coordinate(2.5f, 5.5f),
+        Coordinate(1f, 3f)
+    )
+    MapWithOverlay(image, topRightCoordinate, bottomLeftCoordinate, anchorOverlayCoordinates, estimatedOverlayCoordinates)
 }
