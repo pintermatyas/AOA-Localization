@@ -8,9 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,26 +39,30 @@ fun ImageSelectionScreen() {
         }
     )
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Button(
-            onClick = {
-                launcher.launch("image/*")
-            }
-        ) {
-            Text(text = "Select Image")
-        }
-
         imageBitmap.value?.let { bitmap ->
+            //Instead of Image, we later use OverlayMapScreen with the bitmap and injected coordinates
             Image(
                 modifier = Modifier.fillMaxSize(),
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = "some useful description",
                 contentScale = ContentScale.Fit,
             )
+        }
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Bottom,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                onClick = {
+                    launcher.launch("image/*")
+                }
+            ) {
+                Text(text = "Select Image")
+            }
         }
     }
 

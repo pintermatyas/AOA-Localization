@@ -1,6 +1,6 @@
 package hu.bme.aut.android.bluetoothpositioning
 
-data class Coordinate(val x: Float, val y: Float)
+data class Coordinate(var x: Float, var y: Float)
 
 fun parseCoordinates(data: String): Pair<List<Coordinate>, List<Coordinate>>? {
     // Format is the following:
