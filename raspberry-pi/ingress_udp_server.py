@@ -7,13 +7,18 @@ import threading
 import pandas as pd
 import numpy as np
 import positioning
+import os
+import shutil
 from messageprocessing import process_message
 
-COLLECT_MEASUREMENTS = False
 buffers = dict()
 ingress_addresses = list()
 measurements = list()
 logger = logger.get_logger()
+
+def save_on_exit():
+    if constants.COLLECT_MEASUREMENTS:
+        save_measurments(measurements)
 
 def decode_buffer(buffer, collected):
     if not collected:
@@ -62,8 +67,20 @@ def get_tag_id_from_buffer(buffer):
     return str(ret)
 
 def save_measurments(measurements):
-    filename = f'{constants.MEASUREMENT_FOLDER}/m_{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.csv'
-    pd.DataFrame(measurements).to_csv(filename, index=False)
+    OUTPUT_FOLDER = os.path.join(constants.MEASUREMENT_FOLDER, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+    OUTPUT_CONFIG_FOLDER = os.path.join(OUTPUT_FOLDER, "config")
+    os.makedirs(OUTPUT_FOLDER)
+    os.makedirs(OUTPUT_CONFIG_FOLDER)
+    logger.info("Saving measurements to %s", str(OUTPUT_FOLDER))
+    files = os.listdir(constants.CONFIG_FOLDER)
+    for file in files:
+        shutil.copy2(os.path.join(constants.CONFIG_FOLDER,file), OUTPUT_CONFIG_FOLDER)
+
+    for tag_id in set(measurement['tag_id'] for measurement in measurements):
+        filtered_measurements = [measurement for measurement in measurements if measurement['tag_id'] == tag_id]
+        measurements_df = pd.DataFrame(filtered_measurements)
+        csv_file_path = os.path.join(OUTPUT_FOLDER, f"{tag_id}_measurements.csv")
+        measurements_df.to_csv(csv_file_path, index=False)
 
 def start_ingress_udp_server():
     global ingress_addresses, buffers, measurements
@@ -80,17 +97,15 @@ def start_ingress_udp_server():
             if addr[0] not in ingress_addresses:
                 ingress_addresses.append(addr[0])
 
-            if COLLECT_MEASUREMENTS:
+            if constants.COLLECT_MEASUREMENTS:
                 if addr not in buffers:
                     buffers[addr] = data
                 else:
                     buffers[addr] += data
                 if buffers[addr].startswith(b'\r\n+UUDF:') and buffers[addr].endswith(
                         b'\r\n'):
-                    datas = decode_buffer(buffers.pop(addr, None), False)
-                    # If we collect the measurements, it's appended to a list
-                    if COLLECT_MEASUREMENTS:
-                        measurements.append(str(datas))
+                    datas = decode_buffer(buffers.pop(addr, None), True)
+                    measurements.append(datas)
 
             else:
                 tag_id = get_tag_id_from_buffer(data)
@@ -126,7 +141,7 @@ def start_ingress_udp_server():
         logger.info("Ingress UDP server stopped.")
         udp_socket.close()
     finally:
-        if COLLECT_MEASUREMENTS:
+        if constants.COLLECT_MEASUREMENTS:
             save_measurments(measurements)
         udp_socket.close()
 
