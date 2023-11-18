@@ -1,6 +1,9 @@
 package hu.bme.aut.android.bluetoothpositioning
 
+import android.Manifest
+import android.app.Activity
 import android.content.ContentValues.TAG
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -9,8 +12,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
+import androidx.navigation.NavHostController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,13 +29,21 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 
+
 class MainActivity : ComponentActivity() {
+
+    private val REQUEST_EXTERNAL_STORAGE = 1
+    private val PERMISSIONS_STORAGE = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        verifyStoragePermissions(this)
         setContent {
             MyApp {
-                ReceivedPacketView()
+                NavGraph()
             }
         }
         sendUdpMessage("Subscribe", 9903)
@@ -66,6 +84,20 @@ class MainActivity : ComponentActivity() {
             }
         }.start()
     }
+
+    fun verifyStoragePermissions(activity: Activity?) {
+        val permission = ActivityCompat.checkSelfPermission(
+            activity!!,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                activity,
+                PERMISSIONS_STORAGE,
+                REQUEST_EXTERNAL_STORAGE
+            )
+        }
+    }
 }
 
 @Composable
@@ -78,10 +110,14 @@ fun MyApp(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun ReceivedPacketView() {
+fun ReceivedPacketView(
+    navHostController: NavHostController
+) {
+    val context = LocalContext.current
+    val bitmap = loadImageFromInternalStorage(context)!!
+    val configurationCoordinatesString = loadItemDataFromInternalStorage(context)!!.toString()
     var packetData by remember { mutableStateOf("Awaiting packet...") }
 
-    val context = LocalContext.current
     LaunchedEffect(key1 = context) {
         CoroutineScope(Dispatchers.IO).launch {
             try{
@@ -94,9 +130,9 @@ fun ReceivedPacketView() {
                     val message = String(packet.data, 0, packet.length)
                     if(!message.contains("nan")){
                         packetData = message
-                        Log.d(TAG, packetData)
+                        Log.d(TAG, "New data has arrived: $packetData")
                     } else {
-                        Log.e(TAG, message)
+                        Log.d(TAG, "Invalid data has arrived: $message")
                     }
                 }
 
@@ -113,6 +149,29 @@ fun ReceivedPacketView() {
         Text(text=packetData)
     }
     else{
-        MapScreen(data = packetData)
+        if(parseCoordinates(packetData) == null){
+            Toast.makeText(LocalContext.current, "Valid data could not be fetched.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val (estimated, anchors) = parseCoordinates(packetData)!!
+        Log.d(TAG,
+            "Configuration coordinates: $configurationCoordinatesString\n Estimated coordinates: $estimated\n Anchor coordinates: $anchors")
+        val configurationCoordinates = stringToItemData(configurationCoordinatesString)
+        val topRightCoordinate = configurationCoordinates.coordinates[0]
+        val bottomLeftCoordinate = configurationCoordinates.coordinates[1]
+        Log.d(TAG, "PacketData has changed")
+        OverlayMapScreen(
+            image = bitmap,
+            topRightCoordinate = topRightCoordinate,
+            bottomLeftCoordinate = bottomLeftCoordinate,
+            anchorOverlayCoordinates = anchors,
+            estimatedOverlayCoordinates = estimated
+        )
+        /*
+        TODO: Test OverlayMapScreen with new data:
+                    - unparsable data should be handled
+                    - too few anchors should be handled
+                    - too few estimated position should be handled
+         */
     }
 }

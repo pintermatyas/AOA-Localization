@@ -1,11 +1,22 @@
 package hu.bme.aut.android.bluetoothpositioning
 
-data class Coordinate(val x: Float, val y: Float)
+import android.content.Context
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+
+data class Coordinate(var x: Float, var y: Float)
 
 fun parseCoordinates(data: String): Pair<List<Coordinate>, List<Coordinate>>? {
-    // Format is the following:
-    // estimated_1_coordinates;estimated_2_coordinates;;anchor_1_coord;anchor_2_coord;anchor_3_coord etc.
-    // Using a regex as validation:
+    /*
+    Format is the following:
+    estimated_1_coordinates;estimated_2_coordinates;;anchor_1_coord;anchor_2_coord;anchor_3_coord etc.
+    Using a regex as validation:
+    TODO: Add anchor and tag IDs to the format
+    */
     val regexPattern = """(-?\d+(\.\d+)?,-?\d+(\.\d+);)+(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)+""".toRegex()
 
 
@@ -26,3 +37,8 @@ fun parseCoordinates(data: String): Pair<List<Coordinate>, List<Coordinate>>? {
     }
 
 }
+
+data class SavableCoordinateData(
+    val coordinates: List<Coordinate>,
+    val ids: List<Int>
+)
