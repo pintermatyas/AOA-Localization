@@ -168,9 +168,6 @@ fun ReceivedPacketView(
             estimatedOverlayCoordinates = estimated
         )
         /*
-        TODO: Add navigation to the application to be able to switch between screens
-              and recieve configuration coordinates from the ImageSelectionScreen
-
         TODO: Test OverlayMapScreen with new data:
                     - unparsable data should be handled
                     - too few anchors should be handled
