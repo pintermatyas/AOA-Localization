@@ -1,5 +1,13 @@
 package hu.bme.aut.android.bluetoothpositioning
 
+import android.content.Context
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+
 data class Coordinate(var x: Float, var y: Float)
 
 fun parseCoordinates(data: String): Pair<List<Coordinate>, List<Coordinate>>? {
@@ -29,3 +37,8 @@ fun parseCoordinates(data: String): Pair<List<Coordinate>, List<Coordinate>>? {
     }
 
 }
+
+data class SavableCoordinateData(
+    val coordinates: List<Coordinate>,
+    val ids: List<Int>
+)

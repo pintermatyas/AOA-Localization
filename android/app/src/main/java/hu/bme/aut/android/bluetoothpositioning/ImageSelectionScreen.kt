@@ -1,5 +1,6 @@
 package hu.bme.aut.android.bluetoothpositioning
 
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -37,13 +38,19 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import java.util.regex.Pattern
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageSelectionScreen(
+    navHostController: NavHostController,
     onConfirm: (Bitmap, Coordinate, Coordinate) -> Unit
 ) {
     val context = LocalContext.current
@@ -141,6 +148,13 @@ fun ImageSelectionScreen(
                         val topRightYValue = topRightY.toFloat()
                         val bottomLeftXValue = bottomLeftX.toFloat()
                         val bottomLeftYValue = bottomLeftY.toFloat()
+                        val topRightCoordinate = Coordinate(topRightXValue, topRightYValue)
+                        val bottomLeftCoordinate = Coordinate(bottomLeftXValue, bottomLeftYValue)
+                        val savableCoordinates = SavableCoordinateData(
+                            listOf(topRightCoordinate, bottomLeftCoordinate),
+                            listOf(1, 2)
+                        )
+                        saveItemDataToInternalStorage(context, savableCoordinates)
                         onConfirm(
                             imageBitmap.value!!,
                             Coordinate(topRightXValue, topRightYValue),
@@ -185,4 +199,60 @@ fun loadImageFromInternalStorage(context: Context): Bitmap? {
         e.printStackTrace()
     }
     return null
+}
+
+fun saveItemDataToInternalStorage(context: Context, itemData: SavableCoordinateData) {
+    try {
+        val file = File(context.filesDir, "saved_configuration.dat")
+        val outputStream = FileOutputStream(file)
+        val objectOutputStream = ObjectOutputStream(outputStream)
+        val itemDataAsString = itemData.toString()
+        Log.d(TAG, "itemDataAsString: $itemDataAsString")
+        objectOutputStream.writeObject(itemDataAsString)
+        objectOutputStream.close()
+    } catch (e: IOException) {
+        e.printStackTrace()
+    }
+}
+
+fun loadItemDataFromInternalStorage(context: Context): Any? {
+    try {
+        val file = File(context.filesDir, "saved_configuration.dat")
+        if (file.exists()) {
+            val inputStream = FileInputStream(file)
+            Log.d(TAG, "before objectInputStream")
+            val objectInputStream = ObjectInputStream(inputStream)
+            Log.d(TAG, "objectInputStream is ready$objectInputStream")
+            val itemData = objectInputStream.readObject()
+            Log.d(TAG, "itemData is ready${itemData}")
+            objectInputStream.close()
+            return itemData
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+    } catch (e: ClassNotFoundException) {
+        e.printStackTrace()
+    }
+    return null
+}
+
+fun stringToItemData(inputString: String): SavableCoordinateData {
+    val parts = inputString.split(";")
+
+    // Parse coordinates
+    val coordinatesString = parts[0]
+    val coordinateRegex = Pattern.compile("\\[Coordinate\\(x=(-?\\d+\\.\\d+), y=(-?\\d+\\.\\d+)\\), Coordinate\\(x=(-?\\d+\\.\\d+), y=(-?\\d+\\.\\d+)\\)]")
+    val coordinateMatcher = coordinateRegex.matcher(coordinatesString)
+
+    val coordinates = mutableListOf<Coordinate>()
+    while (coordinateMatcher.find()) {
+        val x = coordinateMatcher.group(1).toFloat()
+        val y = coordinateMatcher.group(2).toFloat()
+        coordinates.add(Coordinate(x, y))
+        val x2 = coordinateMatcher.group(3).toFloat()
+        val y2 = coordinateMatcher.group(4).toFloat()
+        coordinates.add(Coordinate(x2, y2))
+    }
+
+    return SavableCoordinateData(coordinates, listOf(1,2))
 }

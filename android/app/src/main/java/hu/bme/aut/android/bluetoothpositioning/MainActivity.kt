@@ -6,6 +6,7 @@ import android.content.ContentValues.TAG
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
+import androidx.navigation.NavHostController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,7 +43,7 @@ class MainActivity : ComponentActivity() {
         verifyStoragePermissions(this)
         setContent {
             MyApp {
-                ReceivedPacketView()
+                NavGraph()
             }
         }
         sendUdpMessage("Subscribe", 9903)
@@ -108,8 +110,12 @@ fun MyApp(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun ReceivedPacketView() {
+fun ReceivedPacketView(
+    navHostController: NavHostController
+) {
     val context = LocalContext.current
+    val bitmap = loadImageFromInternalStorage(context)!!
+    val configurationCoordinatesString = loadItemDataFromInternalStorage(context)!!.toString()
     var packetData by remember { mutableStateOf("Awaiting packet...") }
 
     LaunchedEffect(key1 = context) {
@@ -124,9 +130,9 @@ fun ReceivedPacketView() {
                     val message = String(packet.data, 0, packet.length)
                     if(!message.contains("nan")){
                         packetData = message
-                        Log.d(TAG, packetData)
+                        Log.d(TAG, "New data has arrived: $packetData")
                     } else {
-                        Log.e(TAG, message)
+                        Log.d(TAG, "Invalid data has arrived: $message")
                     }
                 }
 
@@ -143,36 +149,32 @@ fun ReceivedPacketView() {
         Text(text=packetData)
     }
     else{
-        /*
-        Instead of MapScreen, use OverlayMapScreen to display the coordinates on the image
-        First parse coordinates, then pass them to the screen alongside the topRight and bottomLeft coordinates
-
-        Somehow like this:
-
         if(parseCoordinates(packetData) == null){
             Toast.makeText(LocalContext.current, "Valid data could not be fetched.", Toast.LENGTH_LONG).show()
             return
         }
         val (estimated, anchors) = parseCoordinates(packetData)!!
-        val bitmap = loadImageFromInternalStorage(context)!!
+        Log.d(TAG,
+            "Configuration coordinates: $configurationCoordinatesString\n Estimated coordinates: $estimated\n Anchor coordinates: $anchors")
+        val configurationCoordinates = stringToItemData(configurationCoordinatesString)
+        val topRightCoordinate = configurationCoordinates.coordinates[0]
+        val bottomLeftCoordinate = configurationCoordinates.coordinates[1]
+        Log.d(TAG, "PacketData has changed")
         OverlayMapScreen(
-            image: Bitmap,
-            topRightCoordinate: Coordinate,
-            bottomLeftCoordinate: Coordinate,
-            anchors: List<Coordinate>,
-            estimated: List<Coordinate>
+            image = bitmap,
+            topRightCoordinate = topRightCoordinate,
+            bottomLeftCoordinate = bottomLeftCoordinate,
+            anchorOverlayCoordinates = anchors,
+            estimatedOverlayCoordinates = estimated
         )
+        /*
         TODO: Add navigation to the application to be able to switch between screens
               and recieve configuration coordinates from the ImageSelectionScreen
-
-        Afterwards, MapScreen can be removed
 
         TODO: Test OverlayMapScreen with new data:
                     - unparsable data should be handled
                     - too few anchors should be handled
                     - too few estimated position should be handled
          */
-
-        MapScreen(data = packetData)
     }
 }

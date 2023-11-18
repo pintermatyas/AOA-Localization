@@ -1,6 +1,7 @@
 package hu.bme.aut.android.bluetoothpositioning
 
 import android.content.ContentValues
+import android.content.ContentValues.TAG
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.foundation.Canvas
@@ -17,17 +18,20 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import kotlin.math.min
 
 
 @Composable
-fun MapWithOverlay(
+fun OverlayMapScreen(
     image: Bitmap,
     topRightCoordinate: Coordinate,
     bottomLeftCoordinate: Coordinate,
     anchorOverlayCoordinates: List<Coordinate>,
     estimatedOverlayCoordinates: List<Coordinate>
 ) {
+    Log.d(TAG, "Rendering started at " + System.currentTimeMillis().toString())
     val coordinateMarkerSize = 25f
 
     //Offset top right, bottom left and overlay coordinates to positive numbers,
@@ -76,8 +80,7 @@ fun MapWithOverlay(
     val imageWidthInCoordinate = topRightCoordinate.x - bottomLeftCoordinate.x
     val imageHeightInCoordinate = topRightCoordinate.y - bottomLeftCoordinate.y
 
-    Log.e(
-        ContentValues.TAG, "Screen resolution: $screenWidthInPixels x $screenHeightInPixels, " +
+    Log.d(TAG, "Screen resolution: $screenWidthInPixels x $screenHeightInPixels, " +
             "image resolution: $imageWidth x $imageHeight, " +
             "scale: $scale, " +
             "scaledImageWidth: $scaledImageWidth, scaledImageHeight: $scaledImageHeight, " +
@@ -94,11 +97,14 @@ fun MapWithOverlay(
         Canvas(modifier = Modifier.fillMaxSize()) {
             for (coordinate in anchorOffsetCoordinates) {
                 val x = ((coordinate.x / imageWidthInCoordinate) * scaledImageWidth + widthOffset)
-                val y = ((coordinate.y / imageHeightInCoordinate) * scaledImageHeight + heightOffset)
-                Log.e(
-                    ContentValues.TAG,
-                    "Coordinate: ${coordinate.x}, ${coordinate.y}, " +
-                            "x: $x, y: $y")
+                val y = screenHeightInPixels - ((coordinate.y / imageHeightInCoordinate) * scaledImageHeight + heightOffset)
+                if((x > scaledImageWidth + widthOffset || x < widthOffset) || (y > scaledImageHeight + heightOffset || y < heightOffset)){
+                    Log.e(TAG, "Anchor coordinate is outside of the image: ${x}, ${y}\n" +
+                            "Width offset: $widthOffset, height offset: $heightOffset\n" +
+                            "Scaled image width: $scaledImageWidth, scaled image height: $scaledImageHeight")
+                    continue
+                }
+                Log.d(TAG,"Rendering anchor coordinate: ${coordinate.x}, ${coordinate.y}, " + "x: $x, y: $y")
                 drawRect(
                     color = Color.Blue,
                     topLeft = Offset(x-coordinateMarkerSize/2, y-coordinateMarkerSize/2),
@@ -108,17 +114,21 @@ fun MapWithOverlay(
 
             for (coordinate in estimatedOffsetCoordinates) {
                 val x = ((coordinate.x / imageWidthInCoordinate) * scaledImageWidth + widthOffset)
-                val y = ((coordinate.y / imageHeightInCoordinate) * scaledImageHeight + heightOffset)
-                Log.e(
-                    ContentValues.TAG,
-                    "Coordinate: ${coordinate.x}, ${coordinate.y}, " +
-                            "x: $x, y: $y")
+                val y = screenHeightInPixels - ((coordinate.y / imageHeightInCoordinate) * scaledImageHeight + heightOffset)
+                if((x > scaledImageWidth + widthOffset || x < widthOffset) || (y > scaledImageHeight + heightOffset || y < heightOffset)){
+                    Log.e(TAG, "Coordinate is outside of the image: ${x}, ${y}\n" +
+                            "Width offset: $widthOffset, height offset: $heightOffset\n" +
+                            "Scaled image width: $scaledImageWidth, scaled image height: $scaledImageHeight")
+                    continue
+                }
+                Log.d(TAG,"Rendering estimated coordinate: ${coordinate.x}, ${coordinate.y}, " + "x: $x, y: $y")
                 drawRect(
                     color = Color.Red,
                     topLeft = Offset(x-coordinateMarkerSize/2, y-coordinateMarkerSize/2),
                     size = Size(coordinateMarkerSize, coordinateMarkerSize)
                 )
             }
+            Log.d(TAG, "Rendering ended at " + System.currentTimeMillis().toString())
         }
     }
 }
@@ -133,6 +143,8 @@ fun MapOverlayPreview(){
     val anchorOverlayCoordinates = listOf(
         Coordinate(5.0f, 5.0f),
         Coordinate(-5.0f, -5.0f),
+        Coordinate(-5.0f, -2.5f),
+        Coordinate(-5.0f, 0.0f),
     )
     val estimatedOverlayCoordinates = listOf(
         Coordinate(5.0f, -5.0f),
@@ -141,5 +153,5 @@ fun MapOverlayPreview(){
         Coordinate(2.5f, 5.5f),
         Coordinate(1f, 3f)
     )
-    MapWithOverlay(image, topRightCoordinate, bottomLeftCoordinate, anchorOverlayCoordinates, estimatedOverlayCoordinates)
+    OverlayMapScreen(image, topRightCoordinate, bottomLeftCoordinate, anchorOverlayCoordinates, estimatedOverlayCoordinates)
 }
