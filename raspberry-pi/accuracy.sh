@@ -1,4 +1,6 @@
 cd /home/pi/Downloads/AOA-Localization/raspberry-pi/measurements
+rm accuracy.csv
+touch accuracy.csv
 folders=($(ls))
 
 for folder in "${folders[@]}"; do
