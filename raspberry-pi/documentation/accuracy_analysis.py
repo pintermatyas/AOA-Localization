@@ -7,6 +7,7 @@ import positioning
 import figure_with_angles
 import csv
 import matplotlib.pyplot as plt
+import logger
 
 __test_anchor_coordinates = [(1, 1), (2, 3), (3, 2)]
 __test_real_position = [(0.5, 1.5), (2.5, 3.5), (3.5, 2.5)]
