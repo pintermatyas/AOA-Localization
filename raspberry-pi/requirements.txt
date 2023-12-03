@@ -4,5 +4,3 @@ pandas==2.0.3
 filterpy
 scipy
 cython
-plotly
-kaleido
